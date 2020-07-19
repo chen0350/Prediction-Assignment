@@ -1,6 +1,6 @@
 ---
 title: "PML assignment"
-author: "ClarenceChen"
+author: "chen0350"
 date: "7/18/2020"
 output: html_document
 ---
@@ -9,22 +9,72 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Overview
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to build a machine learning algorithm to predict the manner in which they did the exercise
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Apply the machine learning algorithm to the 20 test cases 
 
-```{r cars}
-summary(cars)
+## Data Preparation and Exploratory Analysis
+Download the test and train datasets.
+Remove variables with missing values from both datasets.
+Separate train dataset (70%, 30%) to increase performance and accuracy
+Before cleaning, there were 106 variables, after cleaning, we are left with 53 variables for analysis.
+
+```{r}
+library(caret)
+library(randomForest)
+library(gbm)
+library(dplyr)
+set.seed(1234)
+TrainDataURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+TestDataURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+TrainingData <- read.csv(url(TrainDataURL), na.strings=c("NA","#DIV/0!",""))
+TestingData <- read.csv(url(TestDataURL), na.strings=c("NA","#DIV/0!",""))
+dim(TrainingData)
+dim(TestingData)
+TrainingData <-TrainingData[,colSums(is.na(TrainingData)) == 0]
+TestingData <-TestingData[,colSums(is.na(TestingData)) == 0]
+TrainingData <-TrainingData[,-c(1:7)]
+TestingData <-TestingData[,-c(1:7)]
+dim(TrainingData)
+dim(TestingData)
+PartData <- createDataPartition(TrainingData$classe, p=0.7, list=FALSE)
+TrainingSet <- TrainingData[PartData, ]
+TestingSet <- TrainingData[-PartData, ]
+table(TrainingSet$classe)
+table(TestingSet$classe)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+## Model and cross validation
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+Two methods will be applied to model the regressions (in the Train dataset) and the one with higher accuracy when applied to the Test dataset) will be used for the quiz predictions. The methods are: Random Forests, KNN.
+
+We validate our model accuracy, with  30%  of ‘training data’ 
+```{r}
+rf_model <- train(classe ~ ., data = TrainingSet, method="rf")
+rf_predict <- predict(rf_model, TestingSet)
+confusionMatrix(rf_predict, TestingSet$classe)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+knn_model <- train(classe~., data=TrainingSet, method="knn")
+knn_predict <- predict(knn_model, TestingSet)
+confusionMatrix(knn_predict, TestingSet$classe)
+```
+
+## Model chosen and Expected out of sample error 
+
+Random forest model is selected since it has better accuracy
+The expected out-of-sample error is as per above output i.e. 1- accuracy
+
+## Application to 20 test cases
+
+```{r}
+predictTest <- predict(rf_model, TestingData)
+predictTest
+```
+
+
+
