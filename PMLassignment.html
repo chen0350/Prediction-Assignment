@@ -369,94 +369,159 @@ summary {
 </div>
 
 
-<div id="data-preparation-and-exploratory-analysis" class="section level2">
-<h2>Data Preparation and Exploratory Analysis</h2>
-<p>Remove variables with missing values from the test and train datasets. Separate train dataset (70%, 30%) to increase performance and accuracy Understand the frequency of the <em>Classe</em> variable</p>
-<pre class="r"><code>library(caret)</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre class="r"><code>library(randomForest)</code></pre>
-<pre><code>## randomForest 4.6-14</code></pre>
-<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre><code>## 
-## Attaching package: &#39;randomForest&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:ggplot2&#39;:
-## 
-##     margin</code></pre>
-<pre class="r"><code>library(gbm)</code></pre>
-<pre><code>## Loaded gbm 2.1.8</code></pre>
-<pre class="r"><code>library(dplyr)</code></pre>
+<div id="overview" class="section level2">
+<h2>A. Overview</h2>
+<p>Use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to build a machine learning algorithm to predict the manner in which they did the exercise</p>
+<p>Apply the machine learning algorithm to the 20 test cases</p>
+</div>
+
+<div id="Data Preparation and Exploratory Analysis" class="section level2">
+<h2>B. Data Preparation and Exploratory Analysis</h2>
+<p>Load the R libraries required for analysis. Download the test and train datasets.</p>
+<pre class="r"><code># Load packages
+library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 3.6.3</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;dplyr&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:randomForest&#39;:
-## 
-##     combine</code></pre>
 <pre><code>## The following objects are masked from &#39;package:stats&#39;:
 ## 
 ##     filter, lag</code></pre>
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>set.seed(1234)
-TrainDataURL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
-TestDataURL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
-TrainingData &lt;- read.csv(url(TrainDataURL), na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
-TestingData &lt;- read.csv(url(TestDataURL), na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
-dim(TrainingData)</code></pre>
-<pre><code>## [1] 19622   160</code></pre>
-<pre class="r"><code>dim(TestingData)</code></pre>
-<pre><code>## [1]  20 160</code></pre>
-<pre class="r"><code>TrainingData &lt;-TrainingData[,colSums(is.na(TrainingData)) == 0]
-TestingData &lt;-TestingData[,colSums(is.na(TestingData)) == 0]
-TrainingData &lt;-TrainingData[,-c(1:7)]
-TestingData &lt;-TestingData[,-c(1:7)]
-dim(TrainingData)</code></pre>
-<pre><code>## [1] 19622    53</code></pre>
-<pre class="r"><code>dim(TestingData)</code></pre>
-<pre><code>## [1] 20 53</code></pre>
-<pre class="r"><code>PartData &lt;- createDataPartition(TrainingData$classe, p=0.7, list=FALSE)
-TrainingSet &lt;- TrainingData[PartData, ]
-TestingSet &lt;- TrainingData[-PartData, ]
-table(TrainingSet$classe)</code></pre>
-<pre><code>## 
-##    A    B    C    D    E 
-## 3906 2658 2396 2252 2525</code></pre>
-<pre class="r"><code>table(TestingSet$classe)</code></pre>
-<pre><code>## 
-##    A    B    C    D    E 
-## 1674 1139 1026  964 1082</code></pre>
+<pre class="r"><code>library(caret)</code></pre>
+<pre><code>## Warning: package &#39;caret&#39; was built under R version 3.6.3</code></pre>
+<pre><code>## Loading required package: lattice</code></pre>
+<pre><code>## Loading required package: ggplot2</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.6.3</code></pre>
+<pre class="r"><code>library(gbm)</code></pre>
+<pre><code>## Warning: package &#39;gbm&#39; was built under R version 3.6.3</code></pre>
+<pre><code>## Loaded gbm 2.1.5</code></pre>
+<pre class="r"><code># Get data from the web
+train.URL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
+train.filename &lt;- &quot;pml-training.csv&quot;
+test.URL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
+test.filename &lt;- &quot;pml-testing.csv&quot;
+if (!file.exists(train.filename)) {
+  download.file(train.URL, train.filename, method = &quot;curl&quot;)
+}
+if (!file.exists(test.filename)) {
+  download.file(test.URL, test.filename, method = &quot;curl&quot;)
+}
+# Read data
+training &lt;- read.csv(train.filename, na.strings = c(&quot;NA&quot;, &quot;&quot;))
+testing &lt;- read.csv(test.filename, na.strings = c(&quot;NA&quot;, &quot;&quot;))</code></pre>
 </div>
-<div id="how-you-built-your-model" class="section level2">
-<h2>how you built your model</h2>
-<pre class="r"><code>set.seed(10)
-metric &lt;- &quot;Accuracy&quot;
-control &lt;- trainControl(method=&quot;cv&quot;, number=3)
-fit.rf &lt;- train(classe ~ ., data=TrainingSet, method=&quot;rf&quot;, metric=metric, trControl=control)
+<div id="data-cleaning-and-splitting" class="section level2">
+<h2>C. Data cleaning and splitting</h2>
+<pre class="r"><code># Drop all columns with NAs
+training &lt;- select_if(training, colSums(is.na(training)) == 0)
+testing &lt;- select_if(testing, colSums(is.na(testing)) == 0)
+# Drop irrelevant columns which will not be good predictors. 
+training &lt;- training[, -c(1:7)]
+testing &lt;- testing[, -c(1:7)]
+# Split training data into training set and validation set
+set.seed(7777)
+train.part &lt;- createDataPartition(training$classe, p = 0.7, list = FALSE)
+training.sub &lt;- training[train.part, ]
+validation &lt;- training[-train.part, ]</code></pre>
+</div>
+<div id="model-fitting-and-prediction-with-validation-set" class="section level2">
+<h2>D. Model fitting and prediction with validation set</h2>
+<p>We will compare predictions with 2 models, 
 
-fit.knn &lt;- train(classe~., data=TrainingSet, method=&quot;knn&quot;, metric=metric, trControl=control)
-results &lt;- resamples(list(knn=fit.knn, rf=fit.rf))
-summary(results)</code></pre>
-<pre><code>## 
-## Call:
-## summary.resamples(object = results)
-## 
-## Models: knn, rf 
-## Number of resamples: 3 
-## 
-## Accuracy 
-##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA&#39;s
-## knn 0.8602010 0.8629461 0.8656912 0.8648898 0.8672342 0.8687773    0
-## rf  0.9858017 0.9865690 0.9873362 0.9884981 0.9898463 0.9923564    0
-## 
-## Kappa 
-##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA&#39;s
-## knn 0.8231623 0.8266222 0.8300820 0.8290718 0.8320266 0.8339711    0
-## rf  0.9820388 0.9830095 0.9839802 0.9854497 0.9871551 0.9903300    0</code></pre>
+* gradient boosting (gbm) and 
+* random forests (rf). 
+
+For each model fit, we will also conduct k-fold **cross validation** with 5 folds.</p>
 </div>
-<div id="how-you-used-cross-validation" class="section level2">
-<h2>how you used cross validation</h2>
-<p>We will still also explicitly validate our model accuracy, with the 25% of ‘training data’ that we have set aside and left untouched. ``{r}</p>
-<p>``` ## Expected out of sample error The expected out-of-sample error is calculated as <strong>0.0029.</strong></p>
+<div id="gradient-boosting" class="section level2">
+<h2>Gradient boosting</h2>
+<pre class="r"><code># Fit model
+gbm.fit &lt;- train(classe ~ ., 
+                 data = training.sub,
+                 method = &quot;gbm&quot;,
+                 trControl = trainControl(method = &quot;cv&quot;, number = 5),
+                 verbose = FALSE)
+print(gbm.fit)</code></pre>
+<pre><code>## Stochastic Gradient Boosting 
+## 
+## 13737 samples
+##    52 predictor
+##     5 classes: &#39;A&#39;, &#39;B&#39;, &#39;C&#39;, &#39;D&#39;, &#39;E&#39; 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 10990, 10989, 10991, 10989, 10989 
+## Resampling results across tuning parameters:
+## 
+##   interaction.depth  n.trees  Accuracy   Kappa    
+##   1                   50      0.7548961  0.6891221
+##   1                  100      0.8222337  0.7749864
+##   1                  150      0.8566657  0.8186494
+##   2                   50      0.8561555  0.8177910
+##   2                  100      0.9066035  0.8818201
+##   2                  150      0.9318639  0.9137946
+##   3                   50      0.8936456  0.8653589
+##   3                  100      0.9408897  0.9252051
+##   3                  150      0.9606904  0.9502698
+## 
+## Tuning parameter &#39;shrinkage&#39; was held constant at a value of 0.1
+## 
+## Tuning parameter &#39;n.minobsinnode&#39; was held constant at a value of 10
+## Accuracy was used to select the optimal model using the largest value.
+## The final values used for the model were n.trees = 150,
+##  interaction.depth = 3, shrinkage = 0.1 and n.minobsinnode = 10.</code></pre>
+<p><strong>Predict with the validation set.</strong></p>
+<pre class="r"><code>predict.gbm &lt;- predict(gbm.fit, newdata = validation)
+# Calculate out-of-sample accuracy 
+confusionMatrix(predict.gbm, validation$classe)$overall[&quot;Accuracy&quot;]</code></pre>
+<pre><code>##  Accuracy 
+## 0.9595582</code></pre>
+<p>Accuracy is about 87%, the out-of-sample error is about 13%.</p>
+<div id="random-forests" class="section level3">
+<h3>E. Random forests</h3>
+<pre class="r"><code># Fit model 
+rf.fit &lt;- train(classe ~ ., 
+                 data = training.sub,
+                 method = &quot;rf&quot;,
+                 trControl = trainControl(method = &quot;cv&quot;, number = 5),
+                 verbose = FALSE)
+print(rf.fit)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 13737 samples
+##    52 predictor
+##     5 classes: &#39;A&#39;, &#39;B&#39;, &#39;C&#39;, &#39;D&#39;, &#39;E&#39; 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 10990, 10989, 10990, 10991, 10988 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9912645  0.9889498
+##   27    0.9907550  0.9883053
+##   52    0.9809269  0.9758681
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 2.</code></pre>
+<p><strong>Predict with the validation set.</strong></p>
+<pre class="r"><code>predict.rf &lt;- predict(rf.fit, newdata = validation)
+# Calculate out-of-sample accuracy 
+confusionMatrix(predict.rf, validation$classe)$overall[&quot;Accuracy&quot;]</code></pre>
+<pre><code>##  Accuracy 
+## 0.9920136</code></pre>
+<p>Accuracy with random forests is about 99%, the out-of-sample error is about 1%.</p>
+<p><strong>Random Forest is chosen to predict the test set.This is since it has a higher accuracy as compared to gradient boosting
+</strong></p>
+</div>
+<div id="predict-with-test-set-using-random-forest" class="section level2">
+<h2>F. Predict with test set using Random Forest</h2>
+<pre class="r"><code>predict.test &lt;- predict(rf.fit, newdata = testing)
+predict.test</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
 </div>
 
 
@@ -477,23 +542,6 @@ $(document).ready(function () {
 
 </script>
 
-<!-- tabsets -->
-
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
-<!-- code folding -->
-
-
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>
   (function () {
@@ -503,6 +551,6 @@ $(document).ready(function () {
     document.getElementsByTagName("head")[0].appendChild(script);
   })();
 </script>
-
+</div>
 </body>
 </html>
