@@ -428,12 +428,12 @@ validation &lt;- training[-train.part, ]</code></pre>
 </div>
 <div id="model-fitting-and-prediction-with-validation-set" class="section level2">
 <h2>D. Model fitting and prediction with validation set</h2>
-<p>We will compare predictions with 2 models, 
+<p>We will compare predictions with 2 models, </p>
 
-* gradient boosting (gbm) and 
-* random forests (rf). 
+<p>* gradient boosting (gbm) and </p>
+<p>* random forests (rf). </p>
 
-For each model fit, we will also conduct k-fold **cross validation** with 5 folds.</p>
+<p>For each model fit, we will also conduct k-fold <strong>cross validation</strong> with 5 folds.</p>
 </div>
 <div id="gradient-boosting" class="section level2">
 <h2>Gradient boosting</h2>
@@ -478,7 +478,8 @@ print(gbm.fit)</code></pre>
 confusionMatrix(predict.gbm, validation$classe)$overall[&quot;Accuracy&quot;]</code></pre>
 <pre><code>##  Accuracy 
 ## 0.9595582</code></pre>
-<p>Accuracy is about 87%, the out-of-sample error is about 13%.</p>
+<p>Accuracy is about 87%</p>
+<p>The out-of-sample error is about 13%.</p>
 <div id="random-forests" class="section level3">
 <h3>E. Random forests</h3>
 <pre class="r"><code># Fit model 
@@ -512,7 +513,8 @@ print(rf.fit)</code></pre>
 confusionMatrix(predict.rf, validation$classe)$overall[&quot;Accuracy&quot;]</code></pre>
 <pre><code>##  Accuracy 
 ## 0.9920136</code></pre>
-<p>Accuracy with random forests is about 99%, the out-of-sample error is about 1%.</p>
+<p>Accuracy with random forests is about 99%</p>
+<p>The out-of-sample error is about 1%.</p>
 <p><strong>Random Forest is chosen to predict the test set.This is since it has a higher accuracy as compared to gradient boosting
 </strong></p>
 </div>
