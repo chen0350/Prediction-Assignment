@@ -9,72 +9,112 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Overview
+## A. Overview
 
 Use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to build a machine learning algorithm to predict the manner in which they did the exercise
 
 Apply the machine learning algorithm to the 20 test cases 
 
-## Data Preparation and Exploratory Analysis
+## B. Data Preparation and Exploratory Analysis
+
+Load the R libraries required for analysis. 
+
 Download the test and train datasets.
-Remove variables with missing values from both datasets.
-Separate train dataset (70%, 30%) to increase performance and accuracy
-Before cleaning, there were 106 variables, after cleaning, we are left with 53 variables for analysis.
 
-```{r}
-library(caret)
-library(randomForest)
-library(gbm)
+
+```{r load_data}
+# Load packages
 library(dplyr)
-set.seed(1234)
-TrainDataURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
-TestDataURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
-TrainingData <- read.csv(url(TrainDataURL), na.strings=c("NA","#DIV/0!",""))
-TestingData <- read.csv(url(TestDataURL), na.strings=c("NA","#DIV/0!",""))
-dim(TrainingData)
-dim(TestingData)
-TrainingData <-TrainingData[,colSums(is.na(TrainingData)) == 0]
-TestingData <-TestingData[,colSums(is.na(TestingData)) == 0]
-TrainingData <-TrainingData[,-c(1:7)]
-TestingData <-TestingData[,-c(1:7)]
-dim(TrainingData)
-dim(TestingData)
-PartData <- createDataPartition(TrainingData$classe, p=0.7, list=FALSE)
-TrainingSet <- TrainingData[PartData, ]
-TestingSet <- TrainingData[-PartData, ]
-table(TrainingSet$classe)
-table(TestingSet$classe)
+library(caret)
+library(gbm)
+# Get data from the web
+train.URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+train.filename <- "pml-training.csv"
+test.URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+test.filename <- "pml-testing.csv"
+if (!file.exists(train.filename)) {
+  download.file(train.URL, train.filename, method = "curl")
+}
+if (!file.exists(test.filename)) {
+  download.file(test.URL, test.filename, method = "curl")
+}
+# Read data
+training <- read.csv(train.filename, na.strings = c("NA", ""))
+testing <- read.csv(test.filename, na.strings = c("NA", ""))
 ```
 
+## C. Data cleaning and splitting
+Drop all columns with NAs
+Drop irrelevant columns which will not be good predictors. 
+Split training data into training set and validation set
+```{r data_cleaning}
 
-## Model and cross validation
+training <- select_if(training, colSums(is.na(training)) == 0)
+testing <- select_if(testing, colSums(is.na(testing)) == 0)
 
-Two methods will be applied to model the regressions (in the Train dataset) and the one with higher accuracy when applied to the Test dataset) will be used for the quiz predictions. The methods are: Random Forests, KNN.
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
 
-We validate our model accuracy, with  30%  of ‘training data’ 
-```{r}
-rf_model <- train(classe ~ ., data = TrainingSet, method="rf")
-rf_predict <- predict(rf_model, TestingSet)
-confusionMatrix(rf_predict, TestingSet$classe)
+set.seed(7777)
+train.part <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+training.sub <- training[train.part, ]
+validation <- training[-train.part, ]
 ```
 
-```{r}
-knn_model <- train(classe~., data=TrainingSet, method="knn")
-knn_predict <- predict(knn_model, TestingSet)
-confusionMatrix(knn_predict, TestingSet$classe)
+## D. Model fitting and prediction with validation set
+We will compare predictions with 2 models, 
+
+* gradient boosting (gbm) and 
+* random forests (rf). 
+
+For each model fit, we will also conduct k-fold **cross validation** with 5 folds. 
+
+## D(i) Gradient boosting
+```{r gbm_fit}
+# Fit model
+gbm.fit <- train(classe ~ ., 
+                 data = training.sub,
+                 method = "gbm",
+                 trControl = trainControl(method = "cv", number = 5),
+                 verbose = FALSE)
+print(gbm.fit)
 ```
 
-## Model chosen and Expected out of sample error 
+**Predict with the validation set.**
+```{r gbm_predict}
+predict.gbm <- predict(gbm.fit, newdata = validation)
+# Calculate out-of-sample accuracy 
+confusionMatrix(predict.gbm, validation$classe)$overall["Accuracy"]
+```
+Accuracy is about 95%, 
+The out-of-sample error is about 5%.
 
-Random forest model is selected since it has better accuracy
-The expected out-of-sample error is as per above output i.e. 1- accuracy
-
-## Application to 20 test cases
-
-```{r}
-predictTest <- predict(rf_model, TestingData)
-predictTest
+### D (ii) Random forests
+```{r rf_fit}
+# Fit model 
+rf.fit <- train(classe ~ ., 
+                 data = training.sub,
+                 method = "rf",
+                 trControl = trainControl(method = "cv", number = 5),
+                 verbose = FALSE)
+print(rf.fit)
 ```
 
+**Predict with the validation set.** 
+```{r rf_predict}
+predict.rf <- predict(rf.fit, newdata = validation)
+# Calculate out-of-sample accuracy 
+confusionMatrix(predict.rf, validation$classe)$overall["Accuracy"]
+```
+Accuracy with random forests is about 99%,
+The out-of-sample error is about 1%.  
+  
+## E. Conclusion
 
+**Random Forest** is chosen to predict the test set. This is since it has a higher accuracy as compared to gradient boosting
 
+## F. Predict on test set using Random Forest
+``{r predict_test}
+predict.test <- predict(rf.fit, newdata = testing)
+predict.test
+```
